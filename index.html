@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cursorus</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #111111;
+    color: #fff;
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    position: sticky;
+    top: 0;
+    background: #111111ee;
+    backdrop-filter: blur(10px);
+    z-index: 100;
+  }
+
+  .header-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .header-icon:hover { transform: scale(1.08); }
+  .header-icon img { width: 100%; height: 100%; object-fit: cover; }
+
+  .header-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 15px;
+    letter-spacing: 1px;
+    color: #fff;
+    text-transform: uppercase;
+  }
+
+  .sort-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s;
+    background: none;
+    border: none;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sort-btn:hover { transform: scale(1.08); }
+  .sort-btn:active { transform: scale(0.94); }
+  .sort-btn img { width: 100%; height: 100%; object-fit: cover; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    padding: 28px 10px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .repo-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 8px;
+    cursor: pointer;
+    text-decoration: none;
+    color: #fff;
+    transition: transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .repo-item:hover { transform: scale(1.06); }
+  .repo-item:active { transform: scale(0.96); }
+
+  .repo-icon-wrap {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: 10px;
+    background: #222;
+  }
+  .repo-icon-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+
+  .repo-name {
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    color: #eee;
+    line-height: 1.3;
+    word-break: break-word;
+    max-width: 72px;
+  }
+
+  .state-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    gap: 16px;
+    color: #666;
+    font-size: 13px;
+  }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid #333;
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .grid-enter .repo-item {
+    animation: fadeIn 0.25s ease both;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.92); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="https://github.com/cursorus" target="_blank" class="header-icon">
+    <img src="github.png" alt="GitHub"
+      onerror="this.src='https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png'">
+  </a>
+
+  <span class="header-title">cursorus</span>
+
+  <button class="sort-btn" id="sortBtn" title="Сортировка">
+    <img id="sortIcon" src="sort1.png" alt="sort">
+  </button>
+</div>
+
+<div id="content">
+  <div class="state-wrap">
+    <div class="spinner"></div>
+    <span>Загружаю репозитории...</span>
+  </div>
+</div>
+
+<script>
+const USERNAME = 'cursorus';
+
+// sort: 'date' | 'alpha'
+let currentSort = 'date';
+let allRepos = [];
+const iconCache = {};
+
+async function getRepoIcon(repoName) {
+  if (iconCache[repoName]) return iconCache[repoName];
+  const custom = `repos/${repoName}.png`;
+  const result = await new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(custom);
+    img.onerror = () => resolve('default.png');
+    img.src = custom;
+  });
+  iconCache[repoName] = result;
+  return result;
+}
+
+function sortRepos(repos, mode) {
+  const arr = [...repos];
+  if (mode === 'alpha') {
+    arr.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    arr.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  }
+  return arr;
+}
+
+async function renderGrid(repos) {
+  const content = document.getElementById('content');
+  const grid = document.createElement('div');
+  grid.className = 'grid grid-enter';
+
+  for (const repo of repos) {
+    const icon = await getRepoIcon(repo.name);
+    const a = document.createElement('a');
+    a.className = 'repo-item';
+    a.href = repo.html_url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.innerHTML = `
+      <div class="repo-icon-wrap">
+        <img src="${icon}" alt="${repo.name}" onerror="this.src='default.png'">
+      </div>
+      <span class="repo-name">${repo.name}</span>
+    `;
+    grid.appendChild(a);
+  }
+
+  content.innerHTML = '';
+  content.appendChild(grid);
+}
+
+async function loadRepos() {
+  try {
+    const res = await fetch(`https://api.github.com/users/${USERNAME}/repos?per_page=100&sort=updated`);
+    if (!res.ok) throw new Error('GitHub API: ' + res.status);
+    const repos = await res.json();
+    allRepos = repos.filter(r => !r.fork);
+
+    if (allRepos.length === 0) {
+      document.getElementById('content').innerHTML =
+        `<div class="state-wrap"><span>Репозиториев не найдено</span></div>`;
+      return;
+    }
+
+    await renderGrid(sortRepos(allRepos, currentSort));
+  } catch (err) {
+    document.getElementById('content').innerHTML = `
+      <div class="state-wrap">
+        <span>⚠️ Ошибка загрузки</span>
+        <span style="font-size:11px;color:#555">${err.message}</span>
+      </div>`;
+  }
+}
+
+document.getElementById('sortBtn').addEventListener('click', async () => {
+  currentSort = currentSort === 'date' ? 'alpha' : 'date';
+  document.getElementById('sortIcon').src = currentSort === 'date' ? 'sort1.png' : 'sort2.png';
+  await renderGrid(sortRepos(allRepos, currentSort));
+});
+
+loadRepos();
+</script>
+</body>
+</html>
